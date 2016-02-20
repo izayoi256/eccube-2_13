@@ -54,6 +54,10 @@ class LC_Page_Admin_Products_Product extends LC_Page_Admin_Products_Ex
         $this->arrDELIVERYDATE = $masterData->getMasterData('mtb_delivery_date');
         $this->arrMaker = SC_Helper_Maker_Ex::getIDValueList();
         $this->arrAllowedTag = $masterData->getMasterData('mtb_allowed_tag');
+
+        $objQuery = SC_Query_Ex::getSingletonInstance();
+        $arrMakers = $objQuery->select('*', 'dtb_maker', 'del_flg = 0');
+        $this->tpl_arrMakers = SC_Utils_Ex::jsonEncode($arrMakers);
     }
 
     /**

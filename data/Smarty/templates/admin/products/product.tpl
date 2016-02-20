@@ -21,6 +21,66 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 *}-->
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.0/angular.min.js"></script>
+<script type="text/javascript">
+    var app = angular.module('myApp', []);
+    app.directive('ngInitFocus', function(){
+        return {
+            link: function(scope, element, attr) {
+                scope.$on(attr.ngInitFocus, function(e){
+                    element[0].focus();
+                })
+            }
+        }
+    });
+    app.controller('myController', function($scope, $filter){
+        $scope.makers = <!--{$tpl_arrMakers}-->;
+        $scope.maker = '<!--{$arrForm.maker_id|h}-->';
+        $scope.applyMaker = function(){
+            if($scope.acMaker != null){
+                $scope.maker = $scope.acMaker.maker_id;
+                $scope.searching = false;
+                $scope.selecting = false;
+                $scope.$broadcast('makerChanged');
+            }
+        };
+        $scope.changeMaker = function(next){
+            var filteredMakers = $filter('filter')($scope.makers, $scope.searchText);
+            if(filteredMakers.length > 0){
+                var orderedMakers = $filter('orderBy')(filteredMakers, 'rank', true);
+                var orderedMakerIds = orderedMakers.map(function(v){return v.maker_id;});
+                var newIndex = 0;
+                var i = next ? 1 : -1;
+                if($scope.acMaker != null){
+                    newIndex = orderedMakerIds.indexOf($scope.acMaker.maker_id) + i;
+                }
+                if(orderedMakers[newIndex] == null){
+                    newIndex = next ? 0 : orderedMakers.length - 1;
+                }
+                $scope.acMaker = orderedMakers[newIndex];
+            }
+        };
+        $scope.makerKeyDown = function(e){
+            switch(e.which){
+                // エンター
+                case 13:
+                    if($scope.acMaker == null){
+                        $scope.changeMaker(true);
+                    }
+                    $scope.applyMaker();
+                    break;
+                // 上
+                case 38:
+                    $scope.changeMaker(false);
+                    break;
+                // 下
+                case 40:
+                    $scope.changeMaker(true);
+                    break;
+            }
+        };
+    });
+</script>
 <script type="text/javascript">
     // 表示非表示切り替え
     function lfDispSwitch(id){
@@ -86,7 +146,7 @@
     })
 </script>
 
-<form name="form1" id="form1" method="post" action="?" enctype="multipart/form-data">
+<form name="form1" id="form1" method="post" action="?" enctype="multipart/form-data" ng-app="myApp" ng-controller="myController as myCtrl">
 <input type="hidden" name="<!--{$smarty.const.TRANSACTION_ID_NAME}-->" value="<!--{$transactionid}-->" />
 <!--{foreach key=key item=item from=$arrSearchHidden}-->
     <!--{if is_array($item)}-->
@@ -272,9 +332,17 @@
             <th>メーカー</th>
             <td>
                 <span class="attention"><!--{$arrErr.maker_id}--></span>
-                <select name="maker_id" style="<!--{$arrErr.maker_id|sfGetErrorColor}-->">
+                <input type="text" ng-focus="searching=true" ng-blur="searching=false" ng-model="searchText" ng-keydown="makerKeyDown($event);" placeholder="メーカー検索" size="25" class="box25" />
+                <select name="maker_id" ng-model="maker" style="<!--{$arrErr.maker_id|sfGetErrorColor}-->" ng-init-focus="makerChanged">
                     <option value="">選択してください</option>
                     <!--{html_options options=$arrMaker selected=$arrForm.maker_id}-->
+                </select>
+                <br />
+                <select ng-show="(searching && searchText) || selecting"
+                        ng-mouseover="selecting=true" ng-mouseleave="selecting=false"
+                        ng-options="maker.name for maker in makers|filter:searchText|orderBy:'rank':true track by maker.maker_id"
+                        ng-click="applyMaker();" ng-model="acMaker" size="5" class="box25" style="position: absolute;">
+                    <option ng-show="!(makers|filter:searchText).length" value="">該当メーカーなし</option>
                 </select>
             </td>
         </tr>
