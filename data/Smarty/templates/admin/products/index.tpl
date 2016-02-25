@@ -21,7 +21,74 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 *}-->
-
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.0/angular.min.js"></script>
+<script type="text/javascript">
+    var app = angular.module('myApp', []);
+    app.directive('ngInitBlur', function(){
+        return {
+            link: function(scope, element, attr) {
+                scope.$on(attr.ngInitBlur, function(e){
+                    element[0].blur();
+                })
+            }
+        }
+    });
+    app.controller('BaseController', function($scope, $filter){
+        $scope.searchProducts = [];
+        $scope.applyProduct = function(){
+            if($scope.acProduct != null){
+                var filteredSearchProducts = $filter('filter')($scope.searchProducts, $scope.searchProduct);
+                $scope.searchProduct = filteredSearchProducts[$scope.acProduct];
+                $scope.searching = false;
+                $scope.selecting = false;
+                $scope.$broadcast('productChanged');
+            }
+        };
+        $scope.changeProduct = function(next){
+            var filteredSearchProducts = $filter('filter')($scope.searchProducts, $scope.searchProduct);
+            if(filteredSearchProducts.length > 0){
+                var newIndex = 0;
+                var i = next ? 1 : -1;
+                if($scope.acProduct != null){
+                    newIndex = parseInt($scope.acProduct) + i;
+                }
+                if(filteredSearchProducts[newIndex] == null){
+                    newIndex = next ? 0 : filteredSearchProducts.length - 1;
+                }
+                $scope.acProduct = newIndex.toString();
+            }
+        };
+        $scope.productKeyDown = function(e){
+            switch(e.which){
+                // エンター
+                case 13:
+                    if($scope.acProduct == null){
+                        $scope.changeProduct(true);
+                    }
+                    $scope.applyProduct();
+                    break;
+                // 上
+                case 38:
+                    $scope.changeProduct(false);
+                    break;
+                // 下
+                case 40:
+                    $scope.changeProduct(true);
+                    break;
+            }
+        };
+    });
+    app.controller('ProductCodeController', function($scope, $controller){
+        $controller('BaseController', {$scope: $scope});
+        $scope.searchProducts = <!--{$json_arrProductCodes}-->;
+        $scope.searchProduct = '<!--{$arrForm.search_product_code.value|h}-->';
+    })
+    app.controller('ProductNameController', function($scope, $controller){
+        $controller('BaseController', {$scope: $scope});
+        $scope.searchProducts = <!--{$json_arrProductNames}-->;
+        $scope.searchProduct = '<!--{$arrForm.search_name.value|h}-->';
+    })
+</script>
 <script type="text/javascript">
 // URLの表示非表示切り替え
 function lfnDispChange(){
@@ -57,7 +124,7 @@ function lfnDispChange(){
 
 
 <div id="products" class="contents-main">
-    <form name="search_form" id="search_form" method="post" action="?">
+    <form name="search_form" id="search_form" method="post" action="?" ng-app="myApp">
         <input type="hidden" name="<!--{$smarty.const.TRANSACTION_ID_NAME}-->" value="<!--{$transactionid}-->" />
         <input type="hidden" name="mode" value="search" />
         <h2>検索条件設定</h2>
@@ -76,20 +143,37 @@ function lfnDispChange(){
             </tr>
             <tr>
                 <th>商品コード</th>
-                <td>
+                <td ng-controller="ProductCodeController as pcCtrl">
                     <!--{assign var=key value="search_product_code"}-->
                     <!--{if $arrErr[$key]}-->
                         <span class="attention"><!--{$arrErr[$key]}--></span>
                     <!--{/if}-->
-                    <input type="text" name="<!--{$key}-->" value="<!--{$arrForm[$key].value|h}-->" maxlength="<!--{$arrForm[$key].length}-->" style="<!--{$arrErr[$key]|sfGetErrorColor}-->" size="30" class="box30" />
+                    <input type="text" name="<!--{$key}-->" value="<!--{$arrForm[$key].value|h}-->" maxlength="<!--{$arrForm[$key].length}-->" style="<!--{$arrErr[$key]|sfGetErrorColor}-->" size="30" class="box30"
+                           ng-focus="searching=true" ng-blur="searching=false" ng-init-blur="productChanged"
+                           ng-model="searchProduct" autocomplete="off" ng-keydown="productKeyDown($event);"
+                    />
+                    <br />
+                    <select ng-show="(searching && searchProduct) || selecting" ng-mouseover="selecting=true"
+                            ng-mouseleave="selecting=false" ng-model="acProduct" size="5" class="box30" style="position:absolute;" ng-click="applyProduct();"
+                            ng-options="key as value for (key, value) in searchProducts|filter:searchProduct">
+                        <option ng-show="!(searchProducts|filter:searchProduct).length" value="">該当商品コードなし</option>
+                    </select>
                 </td>
                 <th>商品名</th>
-                <td>
+                <td ng-controller="ProductNameController as pnCtrl">
                     <!--{assign var=key value="search_name"}-->
                     <!--{if $arrErr[$key]}-->
                         <span class="attention"><!--{$arrErr[$key]}--></span>
                     <!--{/if}-->
-                    <input type="text" name="<!--{$key}-->" value="<!--{$arrForm[$key].value|h}-->" maxlength="<!--{$arrForm[$key].length}-->" style="<!--{$arrErr[$key]|sfGetErrorColor}-->" size="30" class="box30" />
+                    <input type="text" name="<!--{$key}-->" value="<!--{$arrForm[$key].value|h}-->" maxlength="<!--{$arrForm[$key].length}-->" style="<!--{$arrErr[$key]|sfGetErrorColor}-->" size="30" class="box30"
+                           ng-focus="searching=true" ng-blur="searching=false" ng-init-blur="productChanged"
+                           ng-model="searchProduct" autocomplete="off" ng-keydown="productKeyDown($event);" />
+                    <br />
+                    <select ng-show="(searching && searchProduct) || selecting" ng-mouseover="selecting=true"
+                            ng-mouseleave="selecting=false" ng-model="acProduct" size="5" class="box30" style="position:absolute;" ng-click="applyProduct();"
+                            ng-options="key as value for (key, value) in searchProducts|filter:searchProduct">
+                        <option ng-show="!(searchProducts|filter:searchProduct).length" value="">該当商品コードなし</option>
+                    </select>
                 </td>
             </tr>
             <tr>
