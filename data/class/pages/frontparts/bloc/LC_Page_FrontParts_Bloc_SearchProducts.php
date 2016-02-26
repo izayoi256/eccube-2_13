@@ -40,6 +40,7 @@ class LC_Page_FrontParts_Bloc_SearchProducts extends LC_Page_FrontParts_Bloc_Ex
     public function init()
     {
         parent::init();
+        $this->json_arrProducts = SC_Utils_Ex::jsonEncode($this->getProducts());
     }
 
     /**
@@ -192,5 +193,19 @@ class LC_Page_FrontParts_Bloc_SearchProducts extends LC_Page_FrontParts_Bloc_Ex
         }
 
         return $arrMakerList;
+    }
+
+    /**
+     * 検索対象となる商品を取得する
+     * 
+     * @return array
+     */
+    public function getProducts()
+    {
+        $objQuery = SC_Query_Ex::getSingletonInstance();
+        $from = 'dtb_products p INNER JOIN dtb_products_class pc USING(product_id)';
+        $where = 'p.del_flg = 0 AND pc.del_flg = 0 AND p.status = 1';
+        $objQuery->setGroupBy('p.product_id, p.name, pc.product_code');
+        return (array)$objQuery->select('p.product_id, p.name, pc.product_code', $from, $where);
     }
 }
