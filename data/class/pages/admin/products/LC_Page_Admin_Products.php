@@ -66,6 +66,9 @@ class LC_Page_Admin_Products extends LC_Page_Admin_Ex
         $this->arrEndYear = $objDate->getYear();
         $this->arrEndMonth = $objDate->getMonth();
         $this->arrEndDay = $objDate->getDay();
+        
+        $this->json_arrProductCodes = SC_Utils_Ex::jsonEncode($this->getProductCodes());
+        $this->json_arrProductNames = SC_Utils_Ex::jsonEncode($this->getProductNames());
     }
 
     /**
@@ -393,5 +396,35 @@ class LC_Page_Admin_Products extends LC_Page_Admin_Ex
         $objQuery->setOrder($order);
 
         return $objQuery->select($col, $from, $where, $arrValues);
+    }
+
+    /**
+     * 商品コードを取得する
+     * 
+     * @return array
+     */
+    public function getProductCodes()
+    {
+        $objQuery = SC_Query_Ex::getSingletonInstance();
+        $from = 'dtb_products p INNER JOIN dtb_products_class pc USING(product_id)';
+        $where = 'p.del_flg = 0 AND pc.del_flg = 0';
+        $objQuery->setGroupBy('product_code');
+        $objQuery->setOrder('p.product_id');
+        return $objQuery->getCol('product_code', $from, $where);
+    }
+
+    /**
+     * 商品名を取得する
+     * 
+     * @return array
+     */
+    public function getProductNames()
+    {
+        $objQuery = SC_Query_Ex::getSingletonInstance();
+        $from = 'dtb_products';
+        $where = 'del_flg = 0';
+        $objQuery->setGroupBy('name');
+        $objQuery->setOrder('product_id');
+        return $objQuery->getCol('name', $from, $where);
     }
 }
