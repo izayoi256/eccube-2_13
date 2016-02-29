@@ -21,6 +21,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 *}-->
+<!--{assign var=limitTo value=5}-->
 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.0/angular.min.js"></script>
 <script type="text/javascript">
     var app = angular.module('myApp', []);
@@ -33,29 +34,44 @@
             }
         }
     });
+    app.directive('ngDisableUpdown', function(){
+        return function(scope, element, attrs){
+            element.bind('keydown', function(event){
+                if(event.which == 38 || event.which == 40){
+                    event.preventDefault();
+                }
+            })
+        }
+    });
     app.controller('BaseController', function($scope, $filter){
         $scope.searchProducts = [];
-        $scope.applyProduct = function(){
+        $scope.applyProduct = function(product){
+            if(product != null){
+                $scope.acProduct = product;
+            }
             if($scope.acProduct != null){
-                var filteredSearchProducts = $filter('filter')($scope.searchProducts, $scope.searchProduct);
-                $scope.searchProduct = filteredSearchProducts[$scope.acProduct];
+                $scope.searchProduct = $scope.acProduct;
                 $scope.searching = false;
                 $scope.selecting = false;
+                $scope.acProduct = null;
                 $scope.$broadcast('productChanged');
             }
         };
+        $scope.isActive = function(product){
+            return $scope.acProduct != null && $scope.acProduct == product;
+        };
         $scope.changeProduct = function(next){
-            var filteredSearchProducts = $filter('filter')($scope.searchProducts, $scope.searchProduct);
+            var filteredSearchProducts = $filter('limitTo')($filter('filter')($scope.searchProducts, $scope.searchProduct), '<!--{$limitTo}-->');
             if(filteredSearchProducts.length > 0){
                 var newIndex = 0;
                 var i = next ? 1 : -1;
                 if($scope.acProduct != null){
-                    newIndex = parseInt($scope.acProduct) + i;
+                    newIndex = filteredSearchProducts.indexOf($scope.acProduct) + i;
                 }
                 if(filteredSearchProducts[newIndex] == null){
                     newIndex = next ? 0 : filteredSearchProducts.length - 1;
                 }
-                $scope.acProduct = newIndex.toString();
+                $scope.acProduct = filteredSearchProducts[newIndex];
             }
         };
         $scope.productKeyDown = function(e){
@@ -89,6 +105,23 @@
         $scope.searchProduct = '<!--{$arrForm.search_name.value|h}-->';
     })
 </script>
+<style type="text/css">
+.product-autocomplete{
+    position: absolute;
+    background: white;
+    border: 1px solid #999;
+}
+.product-autocomplete .active{
+    background: #FFF99D;
+}
+.product-autocomplete a{
+    white-space: nowrap;
+    display: block;
+}
+.product-autocomplete li{
+    border-top: 1px solid #999;
+}
+</style>
 <script type="text/javascript">
 // URLの表示非表示切り替え
 function lfnDispChange(){
@@ -151,13 +184,16 @@ function lfnDispChange(){
                     <input type="text" name="<!--{$key}-->" value="<!--{$arrForm[$key].value|h}-->" maxlength="<!--{$arrForm[$key].length}-->" style="<!--{$arrErr[$key]|sfGetErrorColor}-->" size="30" class="box30"
                            ng-focus="searching=true" ng-blur="searching=false" ng-init-blur="productChanged"
                            ng-model="searchProduct" autocomplete="off" ng-keydown="productKeyDown($event);"
+                           ng-disable-updown ng-change="acProduct=null"
                     />
-                    <br />
-                    <select ng-show="(searching && searchProduct) || selecting" ng-mouseover="selecting=true"
-                            ng-mouseleave="selecting=false" ng-model="acProduct" size="5" class="box30" style="position:absolute;" ng-click="applyProduct();"
-                            ng-options="key as value for (key, value) in searchProducts|filter:searchProduct">
-                        <option ng-show="!(searchProducts|filter:searchProduct).length" value="">該当商品コードなし</option>
-                    </select>
+                    <ul class="product-autocomplete" ng-show="selecting || searching && searchProduct && (searchProducts|filter:searchProduct).length"
+                        ng-mouseover="selecting=true" ng-mouseleave="selecting=false">
+                        <li ng-repeat="product_code in searchProducts|filter:searchProduct|limitTo:<!--{$limitTo}-->" ng-class="{active:isActive(product_code)}">
+                            <a href="javascript:void(0);" ng-click="applyProduct(product_code);">
+                                {{product_code}}
+                            </a>
+                        </li>
+                    </ul>
                 </td>
                 <th>商品名</th>
                 <td ng-controller="ProductNameController as pnCtrl">
@@ -167,13 +203,17 @@ function lfnDispChange(){
                     <!--{/if}-->
                     <input type="text" name="<!--{$key}-->" value="<!--{$arrForm[$key].value|h}-->" maxlength="<!--{$arrForm[$key].length}-->" style="<!--{$arrErr[$key]|sfGetErrorColor}-->" size="30" class="box30"
                            ng-focus="searching=true" ng-blur="searching=false" ng-init-blur="productChanged"
-                           ng-model="searchProduct" autocomplete="off" ng-keydown="productKeyDown($event);" />
-                    <br />
-                    <select ng-show="(searching && searchProduct) || selecting" ng-mouseover="selecting=true"
-                            ng-mouseleave="selecting=false" ng-model="acProduct" size="5" class="box30" style="position:absolute;" ng-click="applyProduct();"
-                            ng-options="key as value for (key, value) in searchProducts|filter:searchProduct">
-                        <option ng-show="!(searchProducts|filter:searchProduct).length" value="">該当商品コードなし</option>
-                    </select>
+                           ng-model="searchProduct" autocomplete="off" ng-keydown="productKeyDown($event);"
+                           ng-disable-updown ng-change="acProduct=null"
+                    />
+                    <ul class="product-autocomplete" ng-show="selecting || searching && searchProduct && (searchProducts|filter:searchProduct).length"
+                        ng-mouseover="selecting=true" ng-mouseleave="selecting=false">
+                        <li ng-repeat="name in searchProducts|filter:searchProduct|limitTo:<!--{$limitTo}-->" ng-class="{active:isActive(name)}">
+                            <a href="javascript:void(0);" ng-click="applyProduct(name);">
+                                {{name}}
+                            </a>
+                        </li>
+                    </ul>
                 </td>
             </tr>
             <tr>
