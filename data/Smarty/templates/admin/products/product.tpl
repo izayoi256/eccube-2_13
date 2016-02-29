@@ -21,6 +21,99 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 *}-->
+<!--{assign var=limitTo value=5}-->
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.0/angular.min.js"></script>
+<script type="text/javascript">
+    var app = angular.module('myApp', []);
+    app.directive('ngInitBlur', function(){
+        return {
+            link: function(scope, element, attr) {
+                scope.$on(attr.ngInitBlur, function(e){
+                    element[0].blur();
+                })
+            }
+        }
+    });
+    app.directive('ngDisableUpdown', function(){
+        return function(scope, element, attrs){
+            element.bind('keydown', function(event){
+                if(event.which == 38 || event.which == 40){
+                    event.preventDefault();
+                }
+            })
+        }
+    });
+    app.controller('myController', function($scope, $filter){
+        $scope.makers = <!--{$tpl_arrMakers}-->;
+        $scope.maker = '<!--{$arrForm.maker_id|h}-->';
+        $scope.applyMaker = function(maker){
+            if(maker != null){
+                $scope.acMaker = maker;
+            }
+            if($scope.acMaker != null){
+                $scope.maker = $scope.acMaker.maker_id;
+                $scope.searching = false;
+                $scope.selecting = false;
+                $scope.acMaker = null;
+                $scope.$broadcast('makerChanged');
+            }
+        };
+        $scope.isActive = function(maker){
+            return $scope.acMaker != null && $scope.acMaker == maker;
+        };
+        $scope.changeMaker = function(next){
+            var filteredMakers = $filter('limitTo')($filter('filter')($scope.makers, $scope.searchMaker), '<!--{$limitTo}-->');
+            if(filteredMakers.length > 0){
+                var orderedMakers = $filter('orderBy')(filteredMakers, 'rank', true);
+                var newIndex = 0;
+                var i = next ? 1 : -1;
+                if($scope.acMaker != null){
+                    newIndex = orderedMakers.indexOf($scope.acMaker) + i;
+                }
+                if(orderedMakers[newIndex] == null){
+                    newIndex = next ? 0 : orderedMakers.length - 1;
+                }
+                $scope.acMaker = orderedMakers[newIndex];
+            }
+        };
+        $scope.makerKeyDown = function(e){
+            switch(e.which){
+                // エンター
+                case 13:
+                    if($scope.acMaker == null){
+                        $scope.changeMaker(true);
+                    }
+                    $scope.applyMaker();
+                    break;
+                // 上
+                case 38:
+                    $scope.changeMaker(false);
+                    break;
+                // 下
+                case 40:
+                    $scope.changeMaker(true);
+                    break;
+            }
+        };
+    });
+</script>
+<style type="text/css">
+.maker-autocomplete{
+    position: absolute;
+    background: white;
+    border: 1px solid #999;
+}
+.maker-autocomplete .active{
+    background: #FFF99D;
+}
+.maker-autocomplete a{
+    white-space: nowrap;
+    display: block;
+}
+.maker-autocomplete li{
+    border-top: 1px solid #999;
+}
+</style>
 <script type="text/javascript">
     // 表示非表示切り替え
     function lfDispSwitch(id){
@@ -86,7 +179,7 @@
     })
 </script>
 
-<form name="form1" id="form1" method="post" action="?" enctype="multipart/form-data">
+<form name="form1" id="form1" method="post" action="?" enctype="multipart/form-data" ng-app="myApp" ng-controller="myController as myCtrl">
 <input type="hidden" name="<!--{$smarty.const.TRANSACTION_ID_NAME}-->" value="<!--{$transactionid}-->" />
 <!--{foreach key=key item=item from=$arrSearchHidden}-->
     <!--{if is_array($item)}-->
@@ -272,10 +365,22 @@
             <th>メーカー</th>
             <td>
                 <span class="attention"><!--{$arrErr.maker_id}--></span>
-                <select name="maker_id" style="<!--{$arrErr.maker_id|sfGetErrorColor}-->">
+                <input type="text" placeholder="メーカー検索" size="25" class="box25"
+                    ng-focus="searching=true" ng-blur="searching=false" ng-change="acMaker=null"
+                    ng-model="searchMaker" autocomplete="off" ng-keydown="makerKeyDown($event);"
+                    ng-keydown="makerKeyDown($event);" ng-disable-updown ng-init-blur="makerChanged" />
+                <select name="maker_id" ng-model="maker" style="<!--{$arrErr.maker_id|sfGetErrorColor}-->">
                     <option value="">選択してください</option>
                     <!--{html_options options=$arrMaker selected=$arrForm.maker_id}-->
                 </select>
+                <ul class="maker-autocomplete" ng-show="selecting || searching && searchMaker && (makers|filter:searchMaker).length"
+                    ng-mouseover="selecting=true" ng-mouseleave="selecting=false">
+                    <li ng-repeat="maker in makers|filter:searchMaker|limitTo:<!--{$limitTo}-->|orderBy:'rank':true" ng-class="{active:isActive(maker)}">
+                        <a href="javascript:void(0);" ng-click="applyMaker(maker);">
+                            {{maker.name}}
+                        </a>
+                    </li>
+                </ul>
             </td>
         </tr>
         <tr>
