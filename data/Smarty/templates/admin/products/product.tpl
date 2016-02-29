@@ -54,6 +54,7 @@
                 $scope.maker = $scope.acMaker.maker_id;
                 $scope.searching = false;
                 $scope.selecting = false;
+                $scope.acMaker = null;
                 $scope.$broadcast('makerChanged');
             }
         };
@@ -372,7 +373,6 @@
                     <option value="">選択してください</option>
                     <!--{html_options options=$arrMaker selected=$arrForm.maker_id}-->
                 </select>
-                <br />
                 <ul class="maker-autocomplete" ng-show="selecting || searching && searchMaker && (makers|filter:searchMaker).length"
                     ng-mouseover="selecting=true" ng-mouseleave="selecting=false">
                     <li ng-repeat="maker in makers|filter:searchMaker|limitTo:<!--{$limitTo}-->|orderBy:'rank':true" ng-class="{active:isActive(maker)}">
